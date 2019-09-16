@@ -69,6 +69,7 @@ private:
 	VkDebugUtilsMessengerEXT debugMessenger;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkDevice device;
+	VkQueue graphicsQueue;
 
 	void listAvailableExtensions()
 	{
@@ -336,6 +337,7 @@ private:
 		{
 			throw std::runtime_error("failed to create logical device!");
 		}
+		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
 	}
 
 	void mainLoop()
