@@ -82,6 +82,17 @@ private:
 		if (!enableValidationLayers)
 			return;
 		VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
+		populateDebugMessengerCreateInfo(createInfo);
+
+		if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to setup debug messenger");
+		}
+	}
+
+	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
+	{
+		createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 		createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
 			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
@@ -91,11 +102,6 @@ private:
 			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 		createInfo.pfnUserCallback = debugCallback;
 		createInfo.pUserData = nullptr;
-
-		if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to setup debug messenger");
-		}
 	}
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -170,19 +176,25 @@ private:
 		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 		createInfo.pApplicationInfo = &appInfo;
 
+		/// Setup required extensions
 		auto extensions = getRequiredExtensions();
 		createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 		createInfo.ppEnabledExtensionNames = extensions.data();
+
+		VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
 
 		/// Whether to enable validation layer
 		if (enableValidationLayers)
 		{
 			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
 			createInfo.ppEnabledLayerNames = validationLayers.data();
+			populateDebugMessengerCreateInfo(debugCreateInfo);
+			createInfo.pNext = &debugCreateInfo;
 		}
 		else
 		{
 			createInfo.enabledLayerCount = 0;
+			createInfo.pNext = nullptr;
 		}
 
 		/// Create Vulkan instance
@@ -227,7 +239,7 @@ private:
 
 	void cleanup()
 	{
-		if(enableValidationLayers)
+		if (enableValidationLayers)
 		{
 			DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 		}
