@@ -3,6 +3,7 @@
 
 #include <exception>
 #include <iostream>
+#include <vector>
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -12,6 +13,8 @@ class HelloTriangleApplication
 public:
 	void run()
 	{
+		listAvailableExtensions();
+		listAvailableLayers();
 		initWindow();
 		initVulkan();
 		mainLoop();
@@ -21,6 +24,37 @@ public:
 private:
 	GLFWwindow* window;
 	VkInstance instance;
+
+	void listAvailableExtensions()
+	{
+		uint32_t extensionCount = 0;
+		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
+
+		std::cout << "available extensions: " << std::endl;
+		for (const auto& extension : availableExtensions)
+		{
+			std::cout << "\t" << extension.extensionName << std::endl;
+		}
+		std::cout << std::endl;
+	}
+
+
+	void listAvailableLayers()
+	{
+		uint32_t layerCount = 0;
+		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+		std::vector<VkLayerProperties> availableLayers(layerCount);
+		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+		std::cout << "available layers: " << std::endl;
+		for (const auto& layer : availableLayers)
+		{
+			std::cout << "\t" << layer.layerName << std::endl;
+		}
+	}
+
 
 	void initWindow()
 	{
