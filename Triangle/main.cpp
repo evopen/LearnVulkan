@@ -8,6 +8,16 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
+const std::vector<const char*> validationLayers = {
+	"VK_LAYER_KHRONOS_validation"
+};
+
+#ifdef NDEBUG
+const bool enableValidationLayers = false;
+#else
+const bool enableValidationLayers = true;
+#endif
+
 class HelloTriangleApplication
 {
 public:
@@ -72,6 +82,10 @@ private:
 
 	void createInstance()
 	{
+		if (enableValidationLayers && !checkValidationLayerSupport())
+		{
+			throw std::runtime_error("validation layers requested, but not found");
+		}
 		VkApplicationInfo appInfo = {};
 		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 		appInfo.apiVersion = VK_API_VERSION_1_0;
@@ -86,8 +100,7 @@ private:
 
 		/// Get extensions required by GLFW;
 		uint32_t glfwExtensionCount = 0;
-		const char** glfwExtensions;
-		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 		createInfo.enabledExtensionCount = glfwExtensionCount;
 		createInfo.ppEnabledExtensionNames = glfwExtensions;
 		createInfo.enabledLayerCount = 0;
@@ -107,6 +120,36 @@ private:
 		}
 	}
 
+	bool checkValidationLayerSupport()
+	{
+		uint32_t layerCount;
+		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+		std::vector<VkLayerProperties> availableLayers(layerCount);
+		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+		std::cout << "available layers: " << std::endl;
+		for (const auto& layer : availableLayers)
+		{
+			std::cout << "\t" << layer.layerName << std::endl;
+		}
+
+		for (const char* requestedLayerName : validationLayers)
+		{
+			bool layerFound = false;
+
+			for (const auto& layerProperties : availableLayers)
+			{
+				if (strcmp(requestedLayerName, layerProperties.layerName) == 0)
+				{
+					layerFound = true;
+					break;
+				}
+			}
+			if (!layerFound)
+				return false;
+		}
+		return true;
+	}
+
 	void cleanup()
 	{
 		glfwDestroyWindow(window);
@@ -116,6 +159,16 @@ private:
 
 int main(int argc, char* argv[])
 {
+	if (enableValidationLayers)
+	{
+		std::cout << "validation layers are enabled" << std::endl;
+	}
+	else
+	{
+		std::cout << "validation layers are disabled" << std::endl;
+	}
+	std::cout << std::endl;
+
 	HelloTriangleApplication app;
 
 	try
