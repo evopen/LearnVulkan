@@ -77,31 +77,18 @@ private:
 		std::cout << std::endl;
 	}
 
-	void setupDebugMessenger()
+	void listAvailableLayers()
 	{
-		if (!enableValidationLayers)
-			return;
-		VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
-		populateDebugMessengerCreateInfo(createInfo);
+		uint32_t layerCount = 0;
+		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+		std::vector<VkLayerProperties> availableLayers(layerCount);
+		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-		if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
+		std::cout << "available layers: " << std::endl;
+		for (const auto& layer : availableLayers)
 		{
-			throw std::runtime_error("failed to setup debug messenger");
+			std::cout << "\t" << layer.layerName << std::endl;
 		}
-	}
-
-	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
-	{
-		createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-		createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
-		createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-		createInfo.pfnUserCallback = debugCallback;
-		createInfo.pUserData = nullptr;
 	}
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -115,31 +102,19 @@ private:
 		return VK_FALSE;
 	}
 
-	std::vector<const char*> getRequiredExtensions()
-	{
-		/// Get extensions required by GLFW
-		uint32_t glfwExtensionCount = 0;
-		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-		if (enableValidationLayers)
-		{
-			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-		}
-		return extensions;
-	}
 
-	void listAvailableLayers()
+	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
 	{
-		uint32_t layerCount = 0;
-		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-		std::vector<VkLayerProperties> availableLayers(layerCount);
-		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-		std::cout << "available layers: " << std::endl;
-		for (const auto& layer : availableLayers)
-		{
-			std::cout << "\t" << layer.layerName << std::endl;
-		}
+		createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+		createInfo.pfnUserCallback = debugCallback;
+		createInfo.pUserData = nullptr;
 	}
 
 
@@ -204,14 +179,6 @@ private:
 		}
 	}
 
-	void mainLoop()
-	{
-		while (!glfwWindowShouldClose(window))
-		{
-			glfwPollEvents();
-		}
-	}
-
 	bool checkValidationLayerSupport()
 	{
 		uint32_t layerCount;
@@ -236,6 +203,41 @@ private:
 		}
 		return true;
 	}
+
+	std::vector<const char*> getRequiredExtensions()
+	{
+		/// Get extensions required by GLFW
+		uint32_t glfwExtensionCount = 0;
+		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+		if (enableValidationLayers)
+		{
+			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		}
+		return extensions;
+	}
+
+	void setupDebugMessenger()
+	{
+		if (!enableValidationLayers)
+			return;
+		VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
+		populateDebugMessengerCreateInfo(createInfo);
+
+		if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to setup debug messenger");
+		}
+	}
+
+	void mainLoop()
+	{
+		while (!glfwWindowShouldClose(window))
+		{
+			glfwPollEvents();
+		}
+	}
+
 
 	void cleanup()
 	{
