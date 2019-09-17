@@ -16,6 +16,12 @@ const std::vector<const char*> validationLayers = {
 struct QueueFamilyIndices
 {
 	std::optional<uint32_t> graphicsFamily;
+	std::optional<uint32_t> presentFamily;
+
+	bool isComplete()
+	{
+		return graphicsFamily.has_value() && presentFamily.has_value();
+	}
 };
 
 #ifdef NDEBUG
@@ -70,6 +76,7 @@ private:
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkDevice device;
 	VkQueue graphicsQueue;
+	VkQueue presentQueue;
 	VkSurfaceKHR surface;
 
 	void listAvailableExtensions()
@@ -299,15 +306,20 @@ private:
 
 		uint32_t queueFamilyCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-		std::vector<VkQueueFamilyProperties> queueFamiles(queueFamilyCount);
-		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamiles.data());
+		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
-		for (int i = 0; i < queueFamiles.size(); i++)
+		VkBool32 presentSupport = false;
+		for (unsigned i = 0; i < queueFamilies.size(); i++)
 		{
-			if (queueFamiles.at(i).queueCount > 0 && queueFamiles.at(i).queueFlags & VK_QUEUE_GRAPHICS_BIT)
+			if (queueFamilies.at(i).queueCount > 0 && queueFamilies.at(i).queueFlags & VK_QUEUE_GRAPHICS_BIT)
 			{
 				indices.graphicsFamily = i;
-				break;
+			}
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+			if (queueFamilies[i].queueCount > 0 && presentSupport)
+			{
+				indices.presentFamily = i;
 			}
 		}
 
