@@ -600,6 +600,27 @@ private:
 	{
 		auto vertShaderCode = readFile("D:/Dev/LearnVulkan/Triangle/shaders/vert.spv");
 		auto fragShaderCode = readFile("D:/Dev/LearnVulkan/Triangle/shaders/frag.spv");
+
+		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+		vkDestroyShaderModule(device,vertShaderModule, nullptr);
+		vkDestroyShaderModule(device,fragShaderModule, nullptr);
+	}
+
+	VkShaderModule createShaderModule(const std::vector<char>& code)
+	{
+		VkShaderModuleCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.codeSize = code.size();
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+		VkShaderModule shaderModule;
+		if(vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to create shader module");
+		}
+		return shaderModule;
 	}
 
 	static std::vector<char> readFile(const std::string& filename)
