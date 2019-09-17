@@ -333,12 +333,23 @@ private:
 		QueueFamilyIndices indices = findQueueFamilies(device);
 		VkPhysicalDeviceProperties deviceProperties;
 		vkGetPhysicalDeviceProperties(device, &deviceProperties);
+		bool swapChainAdequate = false;
 		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU &&
 			indices.isComplete() &&
 			extensionsSupported)
 		{
-			std::cout << "Pick GPU: " << deviceProperties.deviceName << std::endl;
-			return true;
+			SwapChainSupportDetails swapChainSupportDetails = querySwapChainSupport(device);
+			swapChainAdequate = !swapChainSupportDetails.formats.empty() && !swapChainSupportDetails
+			                                                                 .presentMode.empty();
+			if (swapChainAdequate)
+			{
+				std::cout << "Pick GPU: " << deviceProperties.deviceName << std::endl;
+				return true;
+			}
+			else
+			{
+				return false;
+			}
 		}
 		else
 		{
@@ -395,7 +406,8 @@ private:
 		{
 			details.presentMode.resize(presentModeCount);
 			vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentMode.data());
-		} else
+		}
+		else
 		{
 			throw std::runtime_error("physical device does not support any present mode");
 		}
