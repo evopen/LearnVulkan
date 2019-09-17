@@ -7,6 +7,7 @@
 #include <optional>
 #include <set>
 #include <algorithm>
+#include <fstream>
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -186,6 +187,7 @@ private:
 		createLogicalDevice();
 		createSwapChain();
 		createImageViews();
+		createGraphicsPipeline();
 	}
 
 	void createInstance()
@@ -594,6 +596,30 @@ private:
 		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 	}
 
+	void createGraphicsPipeline()
+	{
+		auto vertShaderCode = readFile("D:/Dev/LearnVulkan/Triangle/shaders/vert.spv");
+		auto fragShaderCode = readFile("D:/Dev/LearnVulkan/Triangle/shaders/frag.spv");
+	}
+
+	static std::vector<char> readFile(const std::string& filename)
+	{
+		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+		if (!file.is_open())
+		{
+			throw std::runtime_error("failed to open file");
+		}
+
+		size_t fileSize = (size_t)file.tellg();
+		std::vector<char> buffer(fileSize);
+		file.seekg(0);
+		file.read(buffer.data(), fileSize);
+
+		file.close();
+		return buffer;
+	}
+
 	void mainLoop()
 	{
 		while (!glfwWindowShouldClose(window))
@@ -613,8 +639,8 @@ private:
 		{
 			vkDestroyImageView(device, imageView, nullptr);
 		}
-		vkDestroySurfaceKHR(instance, surface, nullptr);
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
+		vkDestroySurfaceKHR(instance, surface, nullptr);
 		vkDestroyDevice(device, nullptr);
 		vkDestroyInstance(instance, nullptr);
 		glfwDestroyWindow(window);
