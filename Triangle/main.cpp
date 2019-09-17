@@ -6,6 +6,7 @@
 #include <vector>
 #include <optional>
 #include <set>
+#include <algorithm>
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -412,6 +413,50 @@ private:
 			throw std::runtime_error("physical device does not support any present mode");
 		}
 		return details;
+	}
+
+	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+	{
+		for (const auto& format : availableFormats)
+		{
+			if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			{
+				return format;
+			}
+		}
+
+		return availableFormats[0];
+	}
+
+	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
+	{
+		for (const auto& presentMode : availablePresentModes)
+		{
+			if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+			{
+				return presentMode;
+			}
+		}
+		return VK_PRESENT_MODE_FIFO_KHR;
+	}
+
+	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
+	{
+		if (capabilities.currentExtent.width != UINT32_MAX)
+		{
+			return capabilities.currentExtent;
+		}
+		else
+		{
+			VkExtent2D actualExtent = {WIDTH, HEIGHT};
+			actualExtent.width = std::clamp(actualExtent.width,
+			                                capabilities.minImageExtent.width,
+			                                capabilities.maxImageExtent.width);
+			actualExtent.height = std::clamp(actualExtent.height,
+			                                 capabilities.minImageExtent.height,
+			                                 capabilities.maxImageExtent.height);
+			return actualExtent;
+		}
 	}
 
 	void createLogicalDevice()
