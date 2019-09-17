@@ -29,6 +29,13 @@ struct QueueFamilyIndices
 	}
 };
 
+struct SwapChainSupportDetails
+{
+	VkSurfaceCapabilitiesKHR capabilities;
+	std::vector<VkSurfaceFormatKHR> formats;
+	std::vector<VkPresentModeKHR> presentMode;
+};
+
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
 #else
@@ -363,6 +370,36 @@ private:
 		}
 
 		return indices;
+	}
+
+	SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device)
+	{
+		SwapChainSupportDetails details;
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+		uint32_t formatCount;
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+		if (formatCount != 0)
+		{
+			details.formats.resize(formatCount);
+			vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+		}
+		else
+		{
+			throw std::runtime_error("physical device does not support any surface format");
+		}
+
+		uint32_t presentModeCount;
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+		if (presentModeCount != 0)
+		{
+			details.presentMode.resize(presentModeCount);
+			vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentMode.data());
+		} else
+		{
+			throw std::runtime_error("physical device does not support any present mode");
+		}
+		return details;
 	}
 
 	void createLogicalDevice()
