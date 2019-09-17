@@ -14,6 +14,10 @@ const std::vector<const char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
 };
 
+const std::vector<const char*> deviceExtensions = {
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+
 struct QueueFamilyIndices
 {
 	std::optional<uint32_t> graphicsFamily;
@@ -62,7 +66,7 @@ class HelloTriangleApplication
 public:
 	void run()
 	{
-		// listAvailableExtensions();
+		// listAvailableInstanceExtensions();
 		// listAvailableLayers();
 		initWindow();
 		initVulkan();
@@ -80,14 +84,29 @@ private:
 	VkQueue presentQueue;
 	VkSurfaceKHR surface;
 
-	void listAvailableExtensions()
+	void listAvailableInstanceExtensions()
 	{
 		uint32_t extensionCount = 0;
 		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
 		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
 
-		std::cout << "available extensions: " << std::endl;
+		std::cout << "available instance extensions: " << std::endl;
+		for (const auto& extension : availableExtensions)
+		{
+			std::cout << "\t" << extension.extensionName << std::endl;
+		}
+		std::cout << std::endl;
+	}
+
+	void listAvailableDeviceExtensions(VkPhysicalDevice device)
+	{
+		uint32_t extensionCount = 0;
+		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+		std::cout << "available device extensions: " << std::endl;
 		for (const auto& extension : availableExtensions)
 		{
 			std::cout << "\t" << extension.extensionName << std::endl;
@@ -225,6 +244,22 @@ private:
 		return true;
 	}
 
+	bool checkDeviceExtensionSupport(VkPhysicalDevice device)
+	{
+		uint32_t extensionCount;
+		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+		std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+		for (const auto& extension : availableExtensions)
+		{
+			requiredExtensions.erase(extension.extensionName);
+		}
+
+		return requiredExtensions.empty();
+	}
+
 	std::vector<const char*> getRequiredExtensions()
 	{
 		/// Get extensions required by GLFW
@@ -287,10 +322,13 @@ private:
 
 	bool isDeviceSuitable(VkPhysicalDevice device)
 	{
+		bool extensionsSupported = checkDeviceExtensionSupport(device);
 		QueueFamilyIndices indices = findQueueFamilies(device);
 		VkPhysicalDeviceProperties deviceProperties;
 		vkGetPhysicalDeviceProperties(device, &deviceProperties);
-		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU && indices.graphicsFamily.has_value())
+		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU &&
+			indices.isComplete() &&
+			extensionsSupported)
 		{
 			std::cout << "Pick GPU: " << deviceProperties.deviceName << std::endl;
 			return true;
