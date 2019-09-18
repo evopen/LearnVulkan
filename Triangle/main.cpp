@@ -101,6 +101,7 @@ private:
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
 	std::vector<VkFramebuffer> swapChainFramebuffers;
+	VkCommandPool commandPool;
 
 	void listAvailableInstanceExtensions()
 	{
@@ -194,6 +195,7 @@ private:
 		createRenderPass();
 		createGraphicsPipeline();
 		createFramebuffers();
+		createCommandPoll();
 	}
 
 	void createInstance()
@@ -792,6 +794,20 @@ private:
 		}
 	}
 
+	void createCommandPoll()
+	{
+		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+
+		VkCommandPoolCreateInfo poolInfo = {};
+		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		poolInfo.queueFamilyIndex = indices.graphicsFamily.value();
+
+		if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to create command pool");
+		}
+	}
+
 	static std::vector<char> readFile(const std::string& filename)
 	{
 		std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -821,6 +837,7 @@ private:
 
 	void cleanup()
 	{
+		vkDestroyCommandPool(device, commandPool, nullptr);
 		for (auto framebuffer : swapChainFramebuffers)
 		{
 			vkDestroyFramebuffer(device, framebuffer, nullptr);
