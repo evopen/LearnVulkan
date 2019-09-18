@@ -357,7 +357,7 @@ private:
 		VkPhysicalDeviceProperties deviceProperties;
 		vkGetPhysicalDeviceProperties(device, &deviceProperties);
 		bool swapChainAdequate = false;
-		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU &&
+		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
 			indices.isComplete() &&
 			extensionsSupported)
 		{
@@ -908,6 +908,7 @@ private:
 			glfwPollEvents();
 			drawFrame();
 		}
+		vkDeviceWaitIdle(device);
 	}
 
 	void drawFrame()
