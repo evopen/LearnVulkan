@@ -662,6 +662,20 @@ private:
 		multisampleInfo.sampleShadingEnable = VK_FALSE;
 		multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
+		VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
+		colorBlendAttachment.colorWriteMask =
+			VK_COLOR_COMPONENT_R_BIT |
+			VK_COLOR_COMPONENT_G_BIT |
+			VK_COLOR_COMPONENT_B_BIT |
+			VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachment.blendEnable = VK_FALSE;
+
+		VkPipelineColorBlendStateCreateInfo colorBlendInfo = {};
+		colorBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		colorBlendInfo.attachmentCount =1;
+		colorBlendInfo.pAttachments = &colorBlendAttachment;
+		colorBlendInfo.logicOpEnable = VK_FALSE;
+
 		vkDestroyShaderModule(device, vertShaderModule, nullptr);
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
 	}
