@@ -102,6 +102,7 @@ private:
 	VkPipeline graphicsPipeline;
 	std::vector<VkFramebuffer> swapChainFramebuffers;
 	VkCommandPool commandPool;
+	std::vector<VkCommandBuffer> commandBuffers;
 
 	void listAvailableInstanceExtensions()
 	{
@@ -196,6 +197,7 @@ private:
 		createGraphicsPipeline();
 		createFramebuffers();
 		createCommandPoll();
+		createCommandBuffers();
 	}
 
 	void createInstance()
@@ -805,6 +807,54 @@ private:
 		if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
 		{
 			throw std::runtime_error("failed to create command pool");
+		}
+	}
+
+	void createCommandBuffers()
+	{
+		commandBuffers.resize(swapChainImageViews.size());
+
+		VkCommandBufferAllocateInfo allocateInfo = {};
+		allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocateInfo.commandPool = commandPool;
+		allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocateInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
+
+		if (vkAllocateCommandBuffers(device, &allocateInfo, commandBuffers.data()) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to allocate command buffers");
+		}
+
+		for (size_t i = 0; i < commandBuffers.size(); i++)
+		{
+			VkCommandBufferBeginInfo bufferBeginInfo = {};
+			bufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+			if (vkBeginCommandBuffer(commandBuffers[i], &bufferBeginInfo) != VK_SUCCESS)
+			{
+				throw std::runtime_error("failed to begin recording command buffer");
+			}
+
+			VkRenderPassBeginInfo renderPassBeginInfo = {};
+			renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			renderPassBeginInfo.framebuffer = swapChainFramebuffers[i];
+			renderPassBeginInfo.renderPass = renderPass;
+			renderPassBeginInfo.renderArea.extent = swapChainExtent;
+			renderPassBeginInfo.renderArea.offset = {0, 0};
+
+			VkClearValue clearColor = {0.f, 0.f, 0.f, 1.f};
+			renderPassBeginInfo.clearValueCount = 1;
+			renderPassBeginInfo.pClearValues = &clearColor;
+
+			vkCmdBeginRenderPass(commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+			vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+			vkCmdEndRenderPass(commandBuffers[i]);
+			
+			if(vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
+			{
+				throw std::runtime_error("failed to record command buffer");
+			}
 		}
 	}
 
