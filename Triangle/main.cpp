@@ -932,6 +932,17 @@ private:
 		{
 			throw std::runtime_error("failed to submit draw command buffer");
 		}
+
+		VkPresentInfoKHR preseninInfo = {};
+		preseninInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		preseninInfo.waitSemaphoreCount = 1;
+		preseninInfo.pWaitSemaphores = signalSemaphore;
+		VkSwapchainKHR swapChains[] = {swapChain};
+		preseninInfo.swapchainCount = 1;
+		preseninInfo.pSwapchains = swapChains;
+		preseninInfo.pImageIndices = &imageIndex;
+
+		vkQueuePresentKHR(presentQueue, &preseninInfo);
 	}
 
 
