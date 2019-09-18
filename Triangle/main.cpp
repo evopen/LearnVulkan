@@ -97,6 +97,7 @@ private:
 	std::vector<VkImageView> swapChainImageViews;
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
+	VkPipelineLayout pipelineLayout;
 
 	void listAvailableInstanceExtensions()
 	{
@@ -672,9 +673,19 @@ private:
 
 		VkPipelineColorBlendStateCreateInfo colorBlendInfo = {};
 		colorBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		colorBlendInfo.attachmentCount =1;
+		colorBlendInfo.attachmentCount = 1;
 		colorBlendInfo.pAttachments = &colorBlendAttachment;
 		colorBlendInfo.logicOpEnable = VK_FALSE;
+
+		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
+		pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutCreateInfo.setLayoutCount = 0;
+		pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+
+		if (vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create pipeline layout");
+		}
 
 		vkDestroyShaderModule(device, vertShaderModule, nullptr);
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
@@ -732,6 +743,7 @@ private:
 		{
 			vkDestroyImageView(device, imageView, nullptr);
 		}
+		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
 		vkDestroySurfaceKHR(instance, surface, nullptr);
 		vkDestroyDevice(device, nullptr);
