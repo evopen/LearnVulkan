@@ -901,6 +901,26 @@ private:
 
 	void drawFrame()
 	{
+		uint32_t imageIndex;
+		vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		VkSemaphore waitSemaphore[] = {imageAvailableSemaphore};
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = waitSemaphore;
+		VkPipelineStageFlags waitStage[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+		submitInfo.pWaitDstStageMask = waitStage;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+		VkSemaphore signalSemaphore[] = {renderFinishedSemaphore};
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = signalSemaphore;
+
+		if(vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to submit draw command buffer");
+		}
 	}
 
 
@@ -908,7 +928,7 @@ private:
 	{
 		vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
 		vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
-		
+
 		vkDestroyCommandPool(device, commandPool, nullptr);
 		for (auto framebuffer : swapChainFramebuffers)
 		{
