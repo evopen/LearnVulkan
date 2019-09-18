@@ -653,8 +653,14 @@ private:
 		rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
 		rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterizationInfo.lineWidth = 1.f;
-		rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;		// TODO: need more explanation
-		rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;	// TODO: need more explanation
+		rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT; // TODO: need more explanation
+		rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE; // TODO: need more explanation
+		rasterizationInfo.depthBiasEnable = VK_FALSE;
+
+		VkPipelineMultisampleStateCreateInfo multisampleInfo = {};
+		multisampleInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		multisampleInfo.sampleShadingEnable = VK_FALSE;
+		multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
 		vkDestroyShaderModule(device, vertShaderModule, nullptr);
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
