@@ -390,17 +390,28 @@ private:
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
 		VkBool32 presentSupport = false;
-		for (unsigned i = 0; i < queueFamilies.size(); i++)
+		for (size_t i = 0; i < queueFamilies.size(); i++)
 		{
-			if (queueFamilies.at(i).queueCount > 0 && queueFamilies.at(i).queueFlags & VK_QUEUE_GRAPHICS_BIT)
+			if (queueFamilies[i].queueCount > 0 && queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
 			{
 				indices.graphicsFamily = i;
+				break;
 			}
+		}
+
+		for (size_t i = 0; i < queueFamilies.size(); i++)
+		{
 			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
 			if (queueFamilies[i].queueCount > 0 && presentSupport)
 			{
 				indices.presentFamily = i;
+				break;
 			}
+		}
+
+		if(!indices.isComplete())
+		{
+			throw std::runtime_error("cannot find required queue family");
 		}
 
 		return indices;
@@ -463,7 +474,7 @@ private:
 		createInfo.preTransform = swapChainSupportDetails.capabilities.currentTransform;
 		createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 		createInfo.presentMode = presentMode;
-		createInfo.clipped = true;
+		createInfo.clipped = VK_TRUE;
 		createInfo.oldSwapchain = VK_NULL_HANDLE;
 
 		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
