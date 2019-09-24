@@ -2,6 +2,29 @@
 #include <iostream>
 #include <fstream>
 
+VkVertexInputBindingDescription Vertex::getBindingDescription()
+{
+	VkVertexInputBindingDescription bindingDescription = {};
+	bindingDescription.binding = 0;
+	bindingDescription.stride = sizeof(Vertex);
+	bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	return bindingDescription;
+}
+
+std::array<VkVertexInputAttributeDescription, 2> Vertex::getAttributeDescriptions()
+{
+	std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
+	attributeDescriptions[0].binding = 0;
+	attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+	attributeDescriptions[0].location = 0;
+	attributeDescriptions[0].offset = offsetof(Vertex, pos);
+	attributeDescriptions[1].binding = 0;
+	attributeDescriptions[1].location = 1;
+	attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	attributeDescriptions[1].offset = offsetof(Vertex, color);
+	return attributeDescriptions;
+}
+
 void VulkanTriangle::run()
 {
 	initWindow();
@@ -31,6 +54,7 @@ void VulkanTriangle::initVulkan()
 	createPipeline();
 	createFramebuffers();
 	createCommandPool();
+	createVertexBuffer();
 	createCommandBuffers();
 	createSyncObjects();
 }
@@ -310,6 +334,13 @@ void VulkanTriangle::createPipeline()
 
 	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {};
 	vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+	VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
+	auto attributeDescriptions = Vertex::getAttributeDescriptions();
+	vertexInputStateCreateInfo.pVertexBindingDescriptions = &bindingDescription;
+	vertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputStateCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
 
 	pipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
 
@@ -431,6 +462,8 @@ void VulkanTriangle::createCommandBuffers()
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+		VkDeviceSize offset = 0;
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer, &offset);
 		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
 		vkCmdEndRenderPass(commandBuffers[i]);
 		vkEndCommandBuffer(commandBuffers[i]);
@@ -454,6 +487,37 @@ void VulkanTriangle::createSyncObjects()
 		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 		vkCreateFence(device, &fenceCreateInfo, nullptr, &submitFences[i]);
 	}
+}
+
+void VulkanTriangle::createVertexBuffer()
+{
+	VkBufferCreateInfo bufferCreateInfo = {};
+	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferCreateInfo.size = sizeof(vertices[0]) * vertices.size();
+	bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	vkCreateBuffer(device, &bufferCreateInfo, nullptr, &vertexBuffer);
+
+	VkMemoryRequirements memoryRequirements;
+	vkGetBufferMemoryRequirements(device, vertexBuffer, &memoryRequirements);
+
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memoryRequirements.size;
+	allocInfo.memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits,
+	                                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+	                                           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemroy) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to allocate memroy");
+	}
+
+	vkBindBufferMemory(device, vertexBuffer, vertexBufferMemroy, 0);
+
+	void* data;
+	vkMapMemory(device, vertexBufferMemroy, 0, bufferCreateInfo.size, 0, &data);
+	memcpy(data, vertices.data(), (size_t)bufferCreateInfo.size);
+	vkUnmapMemory(device, vertexBufferMemroy);
 }
 
 void VulkanTriangle::drawFrame()
@@ -491,4 +555,20 @@ void VulkanTriangle::drawFrame()
 	vkQueuePresentKHR(graphicsQueue, &presentInfo);
 
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+uint32_t VulkanTriangle::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+{
+	VkPhysicalDeviceMemoryProperties memoryProperties;
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+
+	for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+	{
+		if (typeFilter & (1 << i) && (memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+		{
+			return i;
+		}
+	}
+
+	throw std::runtime_error("Failed to find suitable memory type");
 }

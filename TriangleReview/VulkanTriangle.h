@@ -5,10 +5,27 @@
 #include <vector>
 #include <optional>
 #include <string>
+#include <glm/glm.hpp>
+#include <array>
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
 const int MAX_FRAMES_IN_FLIGHT = 2;
+
+struct Vertex
+{
+	glm::vec2 pos;
+	glm::vec3 color;
+
+	static VkVertexInputBindingDescription getBindingDescription();
+	static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions();
+};
+
+const std::vector<Vertex> vertices = {
+	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+};
 
 const std::vector<const char *> validationLayers = {
 	"VK_LAYER_KHRONOS_validation",
@@ -50,6 +67,8 @@ private:
 	VkShaderModule fragShaderModule;
 	VkPipelineLayout pipelineLayout;
 	VkExtent2D extent;
+	VkBuffer vertexBuffer;
+	VkDeviceMemory vertexBufferMemroy;
 
 
 public:
@@ -82,6 +101,9 @@ private:
 	void createCommandPool();
 	void createCommandBuffers();
 	void createSyncObjects();
+	void createVertexBuffer();
 	void drawFrame();
+
+	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 	std::vector<char> readFile(const std::string& filename);
 };
