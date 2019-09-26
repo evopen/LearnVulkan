@@ -491,33 +491,35 @@ void VulkanTriangle::createSyncObjects()
 
 void VulkanTriangle::createVertexBuffer()
 {
-	VkBufferCreateInfo bufferCreateInfo = {};
-	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferCreateInfo.size = sizeof(vertices[0]) * vertices.size();
-	bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	vkCreateBuffer(device, &bufferCreateInfo, nullptr, &vertexBuffer);
-
-	VkMemoryRequirements memoryRequirements;
-	vkGetBufferMemoryRequirements(device, vertexBuffer, &memoryRequirements);
-
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memoryRequirements.size;
-	allocInfo.memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits,
-	                                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-	                                           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-	if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemroy) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Failed to allocate memroy");
-	}
-
-	vkBindBufferMemory(device, vertexBuffer, vertexBufferMemroy, 0);
+	VkDeviceSize size = sizeof(vertices[0]) * vertices.size();
+	createBuffer(size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+	             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexBufferMemroy);
 
 	void* data;
-	vkMapMemory(device, vertexBufferMemroy, 0, bufferCreateInfo.size, 0, &data);
-	memcpy(data, vertices.data(), (size_t)bufferCreateInfo.size);
+	vkMapMemory(device, vertexBufferMemroy, 0, size, 0, &data);
+	memcpy(data, vertices.data(), (size_t)size);
 	vkUnmapMemory(device, vertexBufferMemroy);
+}
+
+void VulkanTriangle::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer& buffer,
+                                  VkMemoryPropertyFlags memoryPropertyFlags,
+                                  VkDeviceMemory& bufferMemory)
+{
+	VkBufferCreateInfo bufferCreateInfo = {};
+	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferCreateInfo.size = size;
+	bufferCreateInfo.usage = usage;
+	vkCreateBuffer(device, &bufferCreateInfo, nullptr, &buffer);
+
+	VkMemoryRequirements memoryRequirements;
+	vkGetBufferMemoryRequirements(device, buffer, &memoryRequirements);
+
+	VkMemoryAllocateInfo allocateInfo = {};
+	allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocateInfo.allocationSize = memoryRequirements.size;
+	allocateInfo.memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, memoryPropertyFlags);
+	vkAllocateMemory(device, &allocateInfo, nullptr, &bufferMemory);
+	vkBindBufferMemory(device, buffer, bufferMemory, 0);
 }
 
 void VulkanTriangle::drawFrame()
