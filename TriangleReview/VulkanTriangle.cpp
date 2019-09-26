@@ -57,6 +57,7 @@ void VulkanTriangle::initVulkan()
 	createCommandPool();
 	createVertexBuffer();
 	createIndexBuffer();
+	createUniformBuffers();
 	createCommandBuffers();
 	createSyncObjects();
 }
@@ -560,6 +561,20 @@ void VulkanTriangle::createIndexBuffer()
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemroy, nullptr);
+}
+
+void VulkanTriangle::createUniformBuffers()
+{
+	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+	uniformBuffers.resize(swapchainImageCount);
+	uniformBufferMemory.resize(swapchainImageCount);
+
+	for (size_t i = 0; i < swapchainImages.size(); i++)
+	{
+		createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		             uniformBuffers[i], uniformBufferMemory[i]);
+	}
 }
 
 void VulkanTriangle::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
