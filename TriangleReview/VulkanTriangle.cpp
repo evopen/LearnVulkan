@@ -55,6 +55,7 @@ void VulkanTriangle::initVulkan()
 	createFramebuffers();
 	createCommandPool();
 	createVertexBuffer();
+	createIndexBuffer();
 	createCommandBuffers();
 	createSyncObjects();
 }
@@ -510,6 +511,32 @@ void VulkanTriangle::createVertexBuffer()
 	             vertexBuffer,
 	             vertexBufferMemroy);
 	copyBuffer(stagingBuffer, vertexBuffer, size);
+
+	vkDestroyBuffer(device, stagingBuffer, nullptr);
+	vkFreeMemory(device, stagingBufferMemroy, nullptr);
+}
+
+void VulkanTriangle::createIndexBuffer()
+{
+	VkDeviceSize size = sizeof(indices[0]) * indices.size();
+
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemroy;
+	createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+	             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer,
+	             stagingBufferMemroy);
+
+
+	void* data;
+	vkMapMemory(device, stagingBufferMemroy, 0, size, 0, &data);
+	memcpy(data, vertices.data(), (size_t)size);
+	vkUnmapMemory(device, stagingBufferMemroy);
+
+	createBuffer(size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+	             indexBuffer,
+	             indexBufferMemory);
+	copyBuffer(stagingBuffer, indexBuffer, size);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemroy, nullptr);

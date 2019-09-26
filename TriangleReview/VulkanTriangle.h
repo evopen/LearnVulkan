@@ -22,9 +22,14 @@ struct Vertex
 };
 
 const std::vector<Vertex> vertices = {
-	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+};
+
+const std::vector<uint16_t> indices = {
+	0, 1, 2, 2, 3, 0
 };
 
 const std::vector<const char *> validationLayers = {
@@ -69,6 +74,8 @@ private:
 	VkExtent2D extent;
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemroy;
+	VkBuffer indexBuffer;
+	VkDeviceMemory indexBufferMemory;
 
 
 public:
@@ -102,6 +109,7 @@ private:
 	void createCommandBuffers();
 	void createSyncObjects();
 	void createVertexBuffer();
+	void createIndexBuffer();
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
 	                  VkMemoryPropertyFlags memoryPropertyFlags,
 	                  VkBuffer& buffer,
