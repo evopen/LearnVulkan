@@ -76,6 +76,7 @@ private:
 	VkDeviceMemory vertexBufferMemroy;
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
+	VkDescriptorSetLayout descriptorSetLayout;
 
 
 public:
@@ -102,6 +103,7 @@ private:
 	void createSwapchain();
 	void createImageView();
 	void createShaderModule();
+	void createDescriptorSetLayout();
 	void createPipeline();
 	void createRenderPass();
 	void createFramebuffers();

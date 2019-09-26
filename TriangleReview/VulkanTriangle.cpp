@@ -51,6 +51,7 @@ void VulkanTriangle::initVulkan()
 	createImageView();
 	createShaderModule();
 	createRenderPass();
+	createDescriptorSetLayout();
 	createPipeline();
 	createFramebuffers();
 	createCommandPool();
@@ -269,6 +270,21 @@ void VulkanTriangle::createShaderModule()
 	vkCreateShaderModule(device, &fragShaderModuleCreateInfo, nullptr, &fragShaderModule);
 }
 
+void VulkanTriangle::createDescriptorSetLayout()
+{
+	VkDescriptorSetLayoutBinding uboLayoutBinding = {};
+	uboLayoutBinding.binding = 0;
+	uboLayoutBinding.descriptorCount = 1;
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+	descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	descriptorSetLayoutCreateInfo.bindingCount = 1;
+	descriptorSetLayoutCreateInfo.pBindings = &uboLayoutBinding;
+	vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout);
+}
+
 void VulkanTriangle::createPipeline()
 {
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
@@ -301,6 +317,8 @@ void VulkanTriangle::createPipeline()
 
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutCreateInfo.setLayoutCount = 1;
+	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
 	vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
 
 	pipelineCreateInfo.layout = pipelineLayout;
