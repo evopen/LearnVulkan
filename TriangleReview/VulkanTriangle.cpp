@@ -465,7 +465,9 @@ void VulkanTriangle::createCommandBuffers()
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 		VkDeviceSize offset = 0;
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer, &offset);
-		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()),
+		                 1, 0, 0, 0);
 		vkCmdEndRenderPass(commandBuffers[i]);
 		vkEndCommandBuffer(commandBuffers[i]);
 	}
@@ -529,7 +531,7 @@ void VulkanTriangle::createIndexBuffer()
 
 	void* data;
 	vkMapMemory(device, stagingBufferMemroy, 0, size, 0, &data);
-	memcpy(data, vertices.data(), (size_t)size);
+	memcpy(data, indices.data(), (size_t)size);
 	vkUnmapMemory(device, stagingBufferMemroy);
 
 	createBuffer(size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
