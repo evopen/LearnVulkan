@@ -102,9 +102,11 @@ private:
 	void createCommandBuffers();
 	void createSyncObjects();
 	void createVertexBuffer();
-	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer& buffer,
+	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
 	                  VkMemoryPropertyFlags memoryPropertyFlags,
+	                  VkBuffer& buffer,
 	                  VkDeviceMemory& bufferMemory);
+	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void drawFrame();
 
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);

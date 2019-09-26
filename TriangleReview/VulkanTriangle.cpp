@@ -492,17 +492,32 @@ void VulkanTriangle::createSyncObjects()
 void VulkanTriangle::createVertexBuffer()
 {
 	VkDeviceSize size = sizeof(vertices[0]) * vertices.size();
-	createBuffer(size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-	             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexBufferMemroy);
+
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemroy;
+	createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+	             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer,
+	             stagingBufferMemroy);
+
 
 	void* data;
-	vkMapMemory(device, vertexBufferMemroy, 0, size, 0, &data);
+	vkMapMemory(device, stagingBufferMemroy, 0, size, 0, &data);
 	memcpy(data, vertices.data(), (size_t)size);
-	vkUnmapMemory(device, vertexBufferMemroy);
+	vkUnmapMemory(device, stagingBufferMemroy);
+
+	createBuffer(size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+	             vertexBuffer,
+	             vertexBufferMemroy);
+	copyBuffer(stagingBuffer, vertexBuffer, size);
+
+	vkDestroyBuffer(device, stagingBuffer, nullptr);
+	vkFreeMemory(device, stagingBufferMemroy, nullptr);
 }
 
-void VulkanTriangle::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkBuffer& buffer,
+void VulkanTriangle::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
                                   VkMemoryPropertyFlags memoryPropertyFlags,
+                                  VkBuffer& buffer,
                                   VkDeviceMemory& bufferMemory)
 {
 	VkBufferCreateInfo bufferCreateInfo = {};
@@ -520,6 +535,38 @@ void VulkanTriangle::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, V
 	allocateInfo.memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, memoryPropertyFlags);
 	vkAllocateMemory(device, &allocateInfo, nullptr, &bufferMemory);
 	vkBindBufferMemory(device, buffer, bufferMemory, 0);
+}
+
+void VulkanTriangle::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+{
+	VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};
+	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	commandBufferAllocateInfo.commandBufferCount = 1;
+	commandBufferAllocateInfo.commandPool = commandPool;
+	commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo commandBufferBeginInfo = {};
+	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+
+	VkBufferCopy copyRegion = {};
+	copyRegion.size = size;
+	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+	vkQueueSubmit(graphicsQueue, 1, &submitInfo, nullptr);
+	vkQueueWaitIdle(graphicsQueue);
+
+	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
 
 void VulkanTriangle::drawFrame()
