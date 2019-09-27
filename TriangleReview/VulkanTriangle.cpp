@@ -265,14 +265,14 @@ void VulkanTriangle::createShaderModule()
 {
 	VkShaderModuleCreateInfo vertShaderModuleCreateInfo = {};
 	vertShaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	std::vector<char> vertShaderCode = readFile("D:/Dev/LearnVulkan/Triangle/shaders/vert.spv");
+	std::vector<char> vertShaderCode = readFile("D:/Dev/LearnVulkan/common/shaders/vert.spv");
 	vertShaderModuleCreateInfo.codeSize = vertShaderCode.size();
 	vertShaderModuleCreateInfo.pCode = reinterpret_cast<uint32_t*>(vertShaderCode.data());
 	vkCreateShaderModule(device, &vertShaderModuleCreateInfo, nullptr, &vertShaderModule);
 
 	VkShaderModuleCreateInfo fragShaderModuleCreateInfo = {};
 	fragShaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	std::vector<char> fragShaderCode = readFile("D:/Dev/LearnVulkan/Triangle/shaders/frag.spv");
+	std::vector<char> fragShaderCode = readFile("D:/Dev/LearnVulkan/common/shaders/frag.spv");
 	fragShaderModuleCreateInfo.codeSize = fragShaderCode.size();
 	fragShaderModuleCreateInfo.pCode = reinterpret_cast<uint32_t*>(fragShaderCode.data());
 	vkCreateShaderModule(device, &fragShaderModuleCreateInfo, nullptr, &fragShaderModule);
