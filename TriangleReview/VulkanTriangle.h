@@ -121,6 +121,7 @@ private:
 	void createCommandPool();
 	void createCommandBuffers();
 	void createSyncObjects();
+	void createTextureImage();
 	void createVertexBuffer();
 	void createIndexBuffer();
 	void createUniformBuffers();

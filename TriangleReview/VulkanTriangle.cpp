@@ -7,6 +7,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 VkVertexInputBindingDescription Vertex::getBindingDescription()
 {
 	VkVertexInputBindingDescription bindingDescription = {};
@@ -265,14 +268,14 @@ void VulkanTriangle::createShaderModule()
 {
 	VkShaderModuleCreateInfo vertShaderModuleCreateInfo = {};
 	vertShaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	std::vector<char> vertShaderCode = readFile("D:/Dev/LearnVulkan/common/shaders/vert.spv");
+	std::vector<char> vertShaderCode = readFile("shaders/vert.spv");
 	vertShaderModuleCreateInfo.codeSize = vertShaderCode.size();
 	vertShaderModuleCreateInfo.pCode = reinterpret_cast<uint32_t*>(vertShaderCode.data());
 	vkCreateShaderModule(device, &vertShaderModuleCreateInfo, nullptr, &vertShaderModule);
 
 	VkShaderModuleCreateInfo fragShaderModuleCreateInfo = {};
 	fragShaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	std::vector<char> fragShaderCode = readFile("D:/Dev/LearnVulkan/common/shaders/frag.spv");
+	std::vector<char> fragShaderCode = readFile("shaders/frag.spv");
 	fragShaderModuleCreateInfo.codeSize = fragShaderCode.size();
 	fragShaderModuleCreateInfo.pCode = reinterpret_cast<uint32_t*>(fragShaderCode.data());
 	vkCreateShaderModule(device, &fragShaderModuleCreateInfo, nullptr, &fragShaderModule);
@@ -523,6 +526,11 @@ void VulkanTriangle::createSyncObjects()
 		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 		vkCreateFence(device, &fenceCreateInfo, nullptr, &submitFences[i]);
 	}
+}
+
+void VulkanTriangle::createTextureImage()
+{
+	// stbi_uc* pixels = stbi_load("")
 }
 
 void VulkanTriangle::createVertexBuffer()
