@@ -63,6 +63,7 @@ void VulkanTriangle::initVulkan()
 	createPipeline();
 	createFramebuffers();
 	createCommandPool();
+	createTextureImage();
 	createVertexBuffer();
 	createIndexBuffer();
 	createUniformBuffers();
@@ -530,7 +531,25 @@ void VulkanTriangle::createSyncObjects()
 
 void VulkanTriangle::createTextureImage()
 {
-	// stbi_uc* pixels = stbi_load("")
+	int textureWidth, textureHeight, textureChannels;
+	stbi_uc* pixels = stbi_load("textures/texture.jpg", &textureWidth, &textureHeight, &textureChannels,
+	                            STBI_rgb_alpha);
+	VkDeviceSize imageSize = textureWidth * textureHeight * 4;
+
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+	             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, stagingBuffer,
+	             stagingBufferMemory);
+
+	void* data;
+	vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+	memcpy(data, pixels, imageSize);
+	vkUnmapMemory(device, stagingBufferMemory);
+	stbi_image_free(pixels);
+
+	createImage(textureWidth, textureHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+	            VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
 }
 
 void VulkanTriangle::createVertexBuffer()
@@ -679,6 +698,38 @@ void VulkanTriangle::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
 	allocateInfo.memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, memoryPropertyFlags);
 	vkAllocateMemory(device, &allocateInfo, nullptr, &bufferMemory);
 	vkBindBufferMemory(device, buffer, bufferMemory, 0);
+}
+
+void VulkanTriangle::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
+                                 VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image,
+                                 VkDeviceMemory& imageMemory)
+{
+	VkImageCreateInfo imageCreateInfo = {};
+	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageCreateInfo.arrayLayers = 1;
+	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageCreateInfo.extent.width = width;
+	imageCreateInfo.extent.height = height;
+	imageCreateInfo.mipLevels = 1;
+	imageCreateInfo.extent.depth = 1;
+	imageCreateInfo.usage = usage;
+	imageCreateInfo.format = format;
+	imageCreateInfo.tiling = tiling;
+	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	vkCreateImage(device, &imageCreateInfo, nullptr, &image);
+
+	VkMemoryRequirements memoryRequirements;
+	vkGetImageMemoryRequirements(device, image, &memoryRequirements);
+
+	VkMemoryAllocateInfo memoryAllocateInfo = {};
+	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memoryAllocateInfo.allocationSize = memoryRequirements.size;
+	memoryAllocateInfo.memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, properties);
+	vkAllocateMemory(device, &memoryAllocateInfo, nullptr, &textureImageMemory);
+	vkBindImageMemory(device, image, imageMemory, 0);
 }
 
 void VulkanTriangle::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
