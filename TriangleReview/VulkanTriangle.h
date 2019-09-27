@@ -86,6 +86,8 @@ private:
 	VkDescriptorSetLayout descriptorSetLayout;
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBufferMemory;
+	VkDescriptorPool descriptorPool;
+	std::vector<VkDescriptorSet> descriptorSets;
 
 
 public:
@@ -122,6 +124,8 @@ private:
 	void createVertexBuffer();
 	void createIndexBuffer();
 	void createUniformBuffers();
+	void createDescriptorPool();
+	void createDescriptorSets();
 	void updateUniformBuffer(uint32_t currentImage);
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
 	                  VkMemoryPropertyFlags memoryPropertyFlags,

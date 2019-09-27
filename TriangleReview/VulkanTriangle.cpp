@@ -63,6 +63,8 @@ void VulkanTriangle::initVulkan()
 	createVertexBuffer();
 	createIndexBuffer();
 	createUniformBuffers();
+	createDescriptorPool();
+	createDescriptorSets();
 	createCommandBuffers();
 	createSyncObjects();
 }
@@ -490,6 +492,8 @@ void VulkanTriangle::createCommandBuffers()
 		VkDeviceSize offset = 0;
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer, &offset);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
+		                        &descriptorSets[i], 0, nullptr);
 		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()),
 		                 1, 0, 0, 0);
 		vkCmdEndRenderPass(commandBuffers[i]);
@@ -579,6 +583,47 @@ void VulkanTriangle::createUniformBuffers()
 		createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 		             uniformBuffers[i], uniformBufferMemory[i]);
+	}
+}
+
+void VulkanTriangle::createDescriptorPool()
+{
+	VkDescriptorPoolSize poolSize = {};
+	poolSize.descriptorCount = swapchainImageCount;
+	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
+	descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPoolCreateInfo.poolSizeCount = 1;
+	descriptorPoolCreateInfo.pPoolSizes = &poolSize;
+	descriptorPoolCreateInfo.maxSets = swapchainImageCount;
+	vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
+}
+
+void VulkanTriangle::createDescriptorSets()
+{
+	std::vector<VkDescriptorSetLayout> layouts(swapchainImageCount, descriptorSetLayout);
+	VkDescriptorSetAllocateInfo allocateInfo = {};
+	allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocateInfo.descriptorPool = descriptorPool;
+	allocateInfo.descriptorSetCount = swapchainImageCount;
+	allocateInfo.pSetLayouts = layouts.data();
+	descriptorSets.resize(swapchainImageCount);
+	vkAllocateDescriptorSets(device, &allocateInfo, descriptorSets.data());
+
+	for (int i = 0; i < swapchainImageCount; i++)
+	{
+		VkDescriptorBufferInfo bufferInfo = {};
+		bufferInfo.buffer = uniformBuffers[i];
+		bufferInfo.range = sizeof(UniformBufferObject);
+		bufferInfo.offset = 0;
+		VkWriteDescriptorSet writeDescriptorSet = {};
+		writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDescriptorSet.descriptorCount = 1;
+		writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		writeDescriptorSet.pBufferInfo = &bufferInfo;
+		writeDescriptorSet.dstSet = descriptorSets[i];
+		vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
 	}
 }
 
