@@ -252,16 +252,7 @@ void VulkanTriangle::createImageViews()
 
 	for (size_t i = 0; i < swapchainImageCount; ++i)
 	{
-		VkImageViewCreateInfo imageViewCreateInfo = {};
-		imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		imageViewCreateInfo.image = swapchainImages[i];
-		imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		imageViewCreateInfo.subresourceRange.levelCount = 1;
-		imageViewCreateInfo.subresourceRange.layerCount = 1;
-		imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		imageViewCreateInfo.format = imageFormat;
-
-		vkCreateImageView(device, &imageViewCreateInfo, nullptr, &swapchainImageViews[i]);
+		swapchainImageViews[i] = createImageView(swapchainImages[i], imageFormat);
 	}
 }
 
@@ -550,6 +541,9 @@ void VulkanTriangle::createTextureImage()
 
 	createImage(textureWidth, textureHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 	            VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+void VulkanTriangle::createTextureImageView()
+{
+	textureImageView = createImageView(textureImage, VK_FORMAT_B8G8R8A8_UNORM);
 }
 
 void VulkanTriangle::createVertexBuffer()
@@ -730,6 +724,22 @@ void VulkanTriangle::createImage(uint32_t width, uint32_t height, VkFormat forma
 	memoryAllocateInfo.memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, properties);
 	vkAllocateMemory(device, &memoryAllocateInfo, nullptr, &textureImageMemory);
 	vkBindImageMemory(device, image, imageMemory, 0);
+}
+
+VkImageView VulkanTriangle::createImageView(VkImage image, VkFormat format)
+{
+	VkImageView imageView;
+	VkImageViewCreateInfo imageViewCreateInfo = {};
+	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	imageViewCreateInfo.image = image;
+	imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewCreateInfo.subresourceRange.levelCount = 1;
+	imageViewCreateInfo.subresourceRange.layerCount = 1;
+	imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewCreateInfo.format = format;
+
+	vkCreateImageView(device, &imageViewCreateInfo, nullptr, &imageView);
+	return imageView;
 }
 
 void VulkanTriangle::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)

@@ -90,6 +90,7 @@ private:
 	std::vector<VkDescriptorSet> descriptorSets;
 	VkImage textureImage;
 	VkDeviceMemory textureImageMemory;
+	VkImageView textureImageView;
 
 
 public:
@@ -124,6 +125,7 @@ private:
 	void createCommandBuffers();
 	void createSyncObjects();
 	void createTextureImage();
+	void createTextureImageView();
 	void createVertexBuffer();
 	void createIndexBuffer();
 	void createUniformBuffers();
@@ -136,6 +138,7 @@ private:
 	                  VkDeviceMemory& bufferMemory);
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
 	                 VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+	VkImageView createImageView(VkImage image, VkFormat format);
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void drawFrame();
 	VkCommandBuffer beginSingleTimeCommands();
