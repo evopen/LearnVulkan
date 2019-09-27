@@ -205,6 +205,9 @@ void VulkanTriangle::createLogicalDevice()
 	deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
 	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
+	VkPhysicalDeviceFeatures features = {};
+	features.samplerAnisotropy = VK_TRUE;
+	deviceCreateInfo.pEnabledFeatures = &features;
 	if (vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS)
 	{
 		throw std::runtime_error("failed to create logical device");
