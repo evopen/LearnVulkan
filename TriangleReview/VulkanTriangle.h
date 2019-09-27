@@ -122,6 +122,7 @@ private:
 	void createVertexBuffer();
 	void createIndexBuffer();
 	void createUniformBuffers();
+	void updateUniformBuffer(uint32_t currentImage);
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
 	                  VkMemoryPropertyFlags memoryPropertyFlags,
 	                  VkBuffer& buffer,

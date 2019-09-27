@@ -1,6 +1,11 @@
 #include "VulkanTriangle.h"
 #include <iostream>
 #include <fstream>
+#include <chrono>
+
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 VkVertexInputBindingDescription Vertex::getBindingDescription()
 {
@@ -577,6 +582,23 @@ void VulkanTriangle::createUniformBuffers()
 	}
 }
 
+void VulkanTriangle::updateUniformBuffer(uint32_t currentImage)
+{
+	static auto startTime = std::chrono::high_resolution_clock::now();
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+	UniformBufferObject ubo = {};
+	ubo.model = glm::rotate(glm::mat4(1.f), time * glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
+	ubo.view = glm::lookAt(glm::vec3(2.f, 2.f, 2.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 0.f, 1.f));
+	ubo.proj = glm::perspective(glm::radians(45.f), (float)WIDTH / HEIGHT, 0.1f, 10.f);
+
+	void* data;
+	vkMapMemory(device, uniformBufferMemory[currentImage], 0, sizeof(ubo), 0, &data);
+	memcpy(data, &ubo, sizeof(ubo));
+	vkUnmapMemory(device, uniformBufferMemory[currentImage]);
+}
+
 void VulkanTriangle::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
                                   VkMemoryPropertyFlags memoryPropertyFlags,
                                   VkBuffer& buffer,
@@ -638,6 +660,8 @@ void VulkanTriangle::drawFrame()
 	uint32_t imageIndex;
 	vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE,
 	                      &imageIndex);
+
+	updateUniformBuffer(imageIndex);
 
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
