@@ -286,10 +286,18 @@ void VulkanTriangle::createDescriptorSetLayout()
 	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
+	VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
+	samplerLayoutBinding.binding = 1;
+	samplerLayoutBinding.descriptorCount = 1;
+	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::vector<VkDescriptorSetLayoutBinding> bindings = {uboLayoutBinding, samplerLayoutBinding};
+
 	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
 	descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptorSetLayoutCreateInfo.bindingCount = 1;
-	descriptorSetLayoutCreateInfo.pBindings = &uboLayoutBinding;
+	descriptorSetLayoutCreateInfo.bindingCount = 2;
+	descriptorSetLayoutCreateInfo.pBindings = bindings.data();
 	vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout);
 }
 
@@ -646,14 +654,16 @@ void VulkanTriangle::createUniformBuffers()
 
 void VulkanTriangle::createDescriptorPool()
 {
-	VkDescriptorPoolSize poolSize = {};
-	poolSize.descriptorCount = swapchainImageCount;
-	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	std::array<VkDescriptorPoolSize, 2> poolSizes = {};
+	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSizes[0].descriptorCount = swapchainImageCount;
+	poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSizes[1].descriptorCount = swapchainImageCount;
 
 	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
 	descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolCreateInfo.poolSizeCount = 1;
-	descriptorPoolCreateInfo.pPoolSizes = &poolSize;
+	descriptorPoolCreateInfo.poolSizeCount = poolSizes.size();
+	descriptorPoolCreateInfo.pPoolSizes = poolSizes.data();
 	descriptorPoolCreateInfo.maxSets = swapchainImageCount;
 	vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
 }
@@ -675,13 +685,26 @@ void VulkanTriangle::createDescriptorSets()
 		bufferInfo.buffer = uniformBuffers[i];
 		bufferInfo.range = sizeof(UniformBufferObject);
 		bufferInfo.offset = 0;
-		VkWriteDescriptorSet writeDescriptorSet = {};
-		writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		writeDescriptorSet.descriptorCount = 1;
-		writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		writeDescriptorSet.pBufferInfo = &bufferInfo;
-		writeDescriptorSet.dstSet = descriptorSets[i];
-		vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
+		VkDescriptorImageInfo imageInfo = {};
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = textureImageView;
+		imageInfo.sampler = textureSampler;
+
+		std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[0].descriptorCount = 1;
+		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrites[0].pBufferInfo = &bufferInfo;
+		descriptorWrites[0].dstSet = descriptorSets[i];
+		descriptorWrites[0].dstBinding = 0;
+		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[1].descriptorCount = 1;
+		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrites[1].pImageInfo = &imageInfo;
+		descriptorWrites[1].dstSet = descriptorSets[i];
+		descriptorWrites[1].dstBinding = 1;
+		vkUpdateDescriptorSets(device, descriptorWrites.size(), descriptorWrites.data(),
+		                       0, nullptr);
 	}
 }
 
