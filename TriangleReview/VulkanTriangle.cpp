@@ -415,7 +415,7 @@ void VulkanTriangle::createRenderPass()
 	attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
 	attachmentDescription.format = imageFormat;
 	attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
 	VkAttachmentReference attachmentRef = {};
@@ -486,6 +486,11 @@ void VulkanTriangle::createCommandBuffers()
 		renderPassBeginInfo.renderPass = renderPass;
 		renderPassBeginInfo.framebuffer = framebuffers[i];
 		renderPassBeginInfo.renderArea.extent = extent;
+
+		VkClearValue clearValue;
+		clearValue.color = {0, 0, 0};
+		renderPassBeginInfo.clearValueCount = 1;
+		renderPassBeginInfo.pClearValues = &clearValue;
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
