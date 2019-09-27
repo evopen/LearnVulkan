@@ -56,7 +56,7 @@ void VulkanTriangle::initVulkan()
 	pickPhysicalDevice();
 	createLogicalDevice();
 	createSwapchain();
-	createImageView();
+	createImageViews();
 	createShaderModule();
 	createRenderPass();
 	createDescriptorSetLayout();
@@ -246,7 +246,7 @@ void VulkanTriangle::createSwapchain()
 	extent = surfaceCapabilities.currentExtent;
 }
 
-void VulkanTriangle::createImageView()
+void VulkanTriangle::createImageViews()
 {
 	swapchainImageViews.resize(swapchainImageCount);
 

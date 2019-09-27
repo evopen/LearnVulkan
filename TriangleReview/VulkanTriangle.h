@@ -114,7 +114,7 @@ private:
 	void pickPhysicalDevice();
 	void createLogicalDevice();
 	void createSwapchain();
-	void createImageView();
+	void createImageViews();
 	void createShaderModule();
 	void createDescriptorSetLayout();
 	void createPipeline();
