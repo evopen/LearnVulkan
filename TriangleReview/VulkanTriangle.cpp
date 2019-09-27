@@ -643,6 +643,8 @@ void VulkanTriangle::updateUniformBuffer(uint32_t currentImage)
 	ubo.view = glm::lookAt(glm::vec3(2.f, 2.f, 2.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 0.f, 1.f));
 	ubo.proj = glm::perspective(glm::radians(45.f), (float)WIDTH / HEIGHT, 0.1f, 10.f);
 
+	ubo.proj[1][1] *= -1;
+
 	void* data;
 	vkMapMemory(device, uniformBufferMemory[currentImage], 0, sizeof(ubo), 0, &data);
 	memcpy(data, &ubo, sizeof(ubo));
