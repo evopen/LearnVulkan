@@ -91,6 +91,7 @@ private:
 	VkImage textureImage;
 	VkDeviceMemory textureImageMemory;
 	VkImageView textureImageView;
+	VkSampler textureSampler;
 
 
 public:
@@ -126,6 +127,7 @@ private:
 	void createSyncObjects();
 	void createTextureImage();
 	void createTextureImageView();
+	void createTextureSampler();
 	void createVertexBuffer();
 	void createIndexBuffer();
 	void createUniformBuffers();
