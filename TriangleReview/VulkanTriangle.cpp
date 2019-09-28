@@ -57,6 +57,7 @@ void VulkanTriangle::initVulkan()
 	createLogicalDevice();
 	createSwapchain();
 	createImageViews();
+	createDepthResources();
 	createShaderModule();
 	createRenderPass();
 	createDescriptorSetLayout();
@@ -257,7 +258,7 @@ void VulkanTriangle::createImageViews()
 
 	for (size_t i = 0; i < swapchainImageCount; ++i)
 	{
-		swapchainImageViews[i] = createImageView(swapchainImages[i], imageFormat);
+		swapchainImageViews[i] = createImageView(swapchainImages[i], imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 }
 
@@ -567,7 +568,7 @@ void VulkanTriangle::createTextureImage()
 
 void VulkanTriangle::createTextureImageView()
 {
-	textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_UNORM);
+	textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 void VulkanTriangle::createTextureSampler()
@@ -708,6 +709,14 @@ void VulkanTriangle::createDescriptorSets()
 	}
 }
 
+void VulkanTriangle::createDepthResources()
+{
+	createImage(extent.width, extent.height, VK_FORMAT_D16_UNORM, VK_IMAGE_TILING_OPTIMAL,
+	            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage,
+	            depthImageMemory);
+	createImageView(depthImage, VK_FORMAT_D16_UNORM, VK_IMAGE_ASPECT_DEPTH_BIT);
+}
+
 void VulkanTriangle::updateUniformBuffer(uint32_t currentImage)
 {
 	static auto startTime = std::chrono::high_resolution_clock::now();
@@ -777,17 +786,17 @@ void VulkanTriangle::createImage(uint32_t width, uint32_t height, VkFormat forma
 	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memoryAllocateInfo.allocationSize = memoryRequirements.size;
 	memoryAllocateInfo.memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, properties);
-	vkAllocateMemory(device, &memoryAllocateInfo, nullptr, &textureImageMemory);
+	vkAllocateMemory(device, &memoryAllocateInfo, nullptr, &imageMemory);
 	vkBindImageMemory(device, image, imageMemory, 0);
 }
 
-VkImageView VulkanTriangle::createImageView(VkImage image, VkFormat format)
+VkImageView VulkanTriangle::createImageView(VkImage image, VkFormat format, VkImageAspectFlagBits aspectFlags)
 {
 	VkImageView imageView;
 	VkImageViewCreateInfo imageViewCreateInfo = {};
 	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	imageViewCreateInfo.image = image;
-	imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewCreateInfo.subresourceRange.aspectMask = aspectFlags;
 	imageViewCreateInfo.subresourceRange.levelCount = 1;
 	imageViewCreateInfo.subresourceRange.layerCount = 1;
 	imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;

@@ -104,6 +104,9 @@ private:
 	VkDeviceMemory textureImageMemory;
 	VkImageView textureImageView;
 	VkSampler textureSampler;
+	VkImage depthImage;
+	VkDeviceMemory depthImageMemory;
+	VkImageView depthImageView;
 
 
 public:
@@ -145,6 +148,7 @@ private:
 	void createUniformBuffers();
 	void createDescriptorPool();
 	void createDescriptorSets();
+	void createDepthResources();
 	void updateUniformBuffer(uint32_t currentImage);
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
 	                  VkMemoryPropertyFlags memoryPropertyFlags,
@@ -152,7 +156,7 @@ private:
 	                  VkDeviceMemory& bufferMemory);
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
 	                 VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
-	VkImageView createImageView(VkImage image, VkFormat format);
+	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlagBits aspectFlags);
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 	void drawFrame();
