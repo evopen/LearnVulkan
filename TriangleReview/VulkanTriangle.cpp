@@ -393,6 +393,14 @@ void VulkanTriangle::createPipeline()
 	colorBlenCreateInfo.pAttachments = &colorBlendAttachmentState;
 	pipelineCreateInfo.pColorBlendState = &colorBlenCreateInfo;
 
+	VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo = {};
+	depthStencilStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencilStateCreateInfo.depthTestEnable = VK_TRUE;
+	depthStencilStateCreateInfo.depthWriteEnable = VK_TRUE;
+	depthStencilStateCreateInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+	depthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
+	pipelineCreateInfo.pDepthStencilState = &depthStencilStateCreateInfo;
+
 	vkCreateGraphicsPipelines(device, nullptr, 1, &pipelineCreateInfo, nullptr, &pipeline);
 }
 
@@ -419,27 +427,43 @@ void VulkanTriangle::createRenderPass()
 	VkRenderPassCreateInfo renderPassCreateInfo = {};
 	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 
-	VkAttachmentDescription attachmentDescription = {};
-	attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
-	attachmentDescription.format = imageFormat;
-	attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	VkAttachmentDescription colorAttachment = {};
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachment.format = imageFormat;
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-	VkAttachmentReference attachmentRef = {};
-	attachmentRef.attachment = 0;
-	attachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	VkAttachmentDescription depthAttachment = {};
+	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depthAttachment.format = VK_FORMAT_D16_UNORM;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+
+	std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+
+	VkAttachmentReference colorAttachmentRef = {};
+	colorAttachmentRef.attachment = 0;
+	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depthAttachmentRef = {};
+	depthAttachmentRef.attachment = 1;
+	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkSubpassDescription subpassDescription = {};
+	subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpassDescription.colorAttachmentCount = 1;
-	subpassDescription.pColorAttachments = &attachmentRef;
+	subpassDescription.pColorAttachments = &colorAttachmentRef;
+	subpassDescription.pDepthStencilAttachment = &depthAttachmentRef;
 
 	renderPassCreateInfo.subpassCount = 1;
 	renderPassCreateInfo.pSubpasses = &subpassDescription;
 
-	renderPassCreateInfo.attachmentCount = 1;
-	renderPassCreateInfo.pAttachments = &attachmentDescription;
+	renderPassCreateInfo.attachmentCount = 2;
+	renderPassCreateInfo.pAttachments = attachments.data();
 
 	if (vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass) != VK_SUCCESS)
 	{
@@ -452,14 +476,16 @@ void VulkanTriangle::createFramebuffers()
 	framebuffers.resize(swapchainImageCount);
 	for (size_t i = 0; i < swapchainImageCount; i++)
 	{
+		std::array<VkImageView, 2> attachments = {swapchainImageViews[i], depthImageView};
+
 		VkFramebufferCreateInfo framebufferCreateInfo = {};
 		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferCreateInfo.renderPass = renderPass;
 		framebufferCreateInfo.width = WIDTH;
 		framebufferCreateInfo.height = HEIGHT;
 		framebufferCreateInfo.layers = 1;
-		framebufferCreateInfo.attachmentCount = 1;
-		framebufferCreateInfo.pAttachments = &swapchainImageViews[i];
+		framebufferCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+		framebufferCreateInfo.pAttachments = attachments.data();
 
 		vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &framebuffers[i]);
 	}
@@ -496,10 +522,11 @@ void VulkanTriangle::createCommandBuffers()
 		renderPassBeginInfo.framebuffer = framebuffers[i];
 		renderPassBeginInfo.renderArea.extent = extent;
 
-		VkClearValue clearValue;
-		clearValue.color = {0, 0, 0};
-		renderPassBeginInfo.clearValueCount = 1;
-		renderPassBeginInfo.pClearValues = &clearValue;
+		std::array<VkClearValue, 2> clearValues = {};
+		clearValues[0].color = {0, 0, 0};
+		clearValues[1].depthStencil = {1, 0};
+		renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassBeginInfo.pClearValues = clearValues.data();
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -663,7 +690,7 @@ void VulkanTriangle::createDescriptorPool()
 
 	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
 	descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolCreateInfo.poolSizeCount = poolSizes.size();
+	descriptorPoolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 	descriptorPoolCreateInfo.pPoolSizes = poolSizes.data();
 	descriptorPoolCreateInfo.maxSets = swapchainImageCount;
 	vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
@@ -680,7 +707,7 @@ void VulkanTriangle::createDescriptorSets()
 	descriptorSets.resize(swapchainImageCount);
 	vkAllocateDescriptorSets(device, &allocateInfo, descriptorSets.data());
 
-	for (int i = 0; i < swapchainImageCount; i++)
+	for (unsigned i = 0; i < swapchainImageCount; i++)
 	{
 		VkDescriptorBufferInfo bufferInfo = {};
 		bufferInfo.buffer = uniformBuffers[i];
@@ -704,7 +731,7 @@ void VulkanTriangle::createDescriptorSets()
 		descriptorWrites[1].pImageInfo = &imageInfo;
 		descriptorWrites[1].dstSet = descriptorSets[i];
 		descriptorWrites[1].dstBinding = 1;
-		vkUpdateDescriptorSets(device, descriptorWrites.size(), descriptorWrites.data(),
+		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(),
 		                       0, nullptr);
 	}
 }
@@ -714,7 +741,7 @@ void VulkanTriangle::createDepthResources()
 	createImage(extent.width, extent.height, VK_FORMAT_D16_UNORM, VK_IMAGE_TILING_OPTIMAL,
 	            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage,
 	            depthImageMemory);
-	createImageView(depthImage, VK_FORMAT_D16_UNORM, VK_IMAGE_ASPECT_DEPTH_BIT);
+	depthImageView = createImageView(depthImage, VK_FORMAT_D16_UNORM, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void VulkanTriangle::updateUniformBuffer(uint32_t currentImage)
