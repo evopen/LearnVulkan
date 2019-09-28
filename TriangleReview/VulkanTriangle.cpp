@@ -351,7 +351,9 @@ void VulkanTriangle::createPipeline()
 	VkViewport viewport = {};
 	viewport.width = WIDTH;
 	viewport.height = HEIGHT;
-	// viewport.maxDepth = 1.f;
+	viewport.maxDepth = 1.f;
+	viewport.minDepth = 0.f;
+	
 	VkRect2D scissor = {};
 	scissor.extent = extent;
 
