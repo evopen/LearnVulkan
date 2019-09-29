@@ -19,6 +19,7 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 const int MAX_FRAMES_IN_FLIGHT = 2;
+const VkSampleCountFlagBits NUM_OF_SAMPLES = VK_SAMPLE_COUNT_8_BIT;
 
 const std::string MODEL_PATH = "models/chalet.obj";
 const std::string TEXTURE_PATH = "textures/chalet.jpg";
@@ -116,6 +117,9 @@ private:
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
+	VkImage colorImage;
+	VkDeviceMemory colorImageMemroy;
+	VkImageView colorImageView;
 
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
@@ -162,21 +166,24 @@ private:
 	void createDescriptorPool();
 	void createDescriptorSets();
 	void createDepthResources();
+	void createColorResources();
 	void updateUniformBuffer(uint32_t currentImage);
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
 	                  VkMemoryPropertyFlags memoryPropertyFlags,
 	                  VkBuffer& buffer,
 	                  VkDeviceMemory& bufferMemory);
-	void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling,
-	                 VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image,
-	                 VkDeviceMemory& imageMemory);
+	void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples,
+	                 VkFormat format,
+	                 VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+	                 VkImage& image, VkDeviceMemory& imageMemory);
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlagBits aspectFlags, uint32_t mipLevels);
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 	void drawFrame();
 	VkCommandBuffer beginSingleTimeCommands();
 	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
-	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
+	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout,
+	                           uint32_t mipLevels);
 	void generateMipmaps(VkImage image, uint32_t texWidth, uint32_t texHeight, uint32_t mipLevels);
 
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);

@@ -61,6 +61,7 @@ void VulkanTriangle::initVulkan()
 	createLogicalDevice();
 	createSwapchain();
 	createImageViews();
+	createColorResources();
 	createDepthResources();
 	createShaderModule();
 	createRenderPass();
@@ -353,7 +354,7 @@ void VulkanTriangle::createPipeline()
 	viewport.height = HEIGHT;
 	viewport.maxDepth = 1.f;
 	viewport.minDepth = 0.f;
-	
+
 	VkRect2D scissor = {};
 	scissor.extent = extent;
 
@@ -366,7 +367,7 @@ void VulkanTriangle::createPipeline()
 
 	VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo = {};
 	multisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisampleStateCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampleStateCreateInfo.rasterizationSamples = NUM_OF_SAMPLES;
 
 	pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
 
@@ -436,7 +437,7 @@ void VulkanTriangle::createRenderPass()
 
 	VkAttachmentDescription colorAttachment = {};
 	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachment.samples = NUM_OF_SAMPLES;
 	colorAttachment.format = imageFormat;
 	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -448,11 +449,19 @@ void VulkanTriangle::createRenderPass()
 	depthAttachment.format = VK_FORMAT_D16_UNORM;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.samples = NUM_OF_SAMPLES;
 
-	std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+	VkAttachmentDescription colorAttachmentResolve = {};
+	colorAttachmentResolve.format = imageFormat;
+	colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	std::array<VkAttachmentDescription, 3> attachments = {colorAttachment, depthAttachment, colorAttachmentResolve};
 
 	VkAttachmentReference colorAttachmentRef = {};
 	colorAttachmentRef.attachment = 0;
@@ -462,16 +471,21 @@ void VulkanTriangle::createRenderPass()
 	depthAttachmentRef.attachment = 1;
 	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+	VkAttachmentReference colorAttachmentResolveRef = {};
+	colorAttachmentResolveRef.attachment = 2;
+	colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
 	VkSubpassDescription subpassDescription = {};
 	subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpassDescription.colorAttachmentCount = 1;
 	subpassDescription.pColorAttachments = &colorAttachmentRef;
 	subpassDescription.pDepthStencilAttachment = &depthAttachmentRef;
+	subpassDescription.pResolveAttachments = &colorAttachmentResolveRef;
 
 	renderPassCreateInfo.subpassCount = 1;
 	renderPassCreateInfo.pSubpasses = &subpassDescription;
 
-	renderPassCreateInfo.attachmentCount = 2;
+	renderPassCreateInfo.attachmentCount = attachments.size();
 	renderPassCreateInfo.pAttachments = attachments.data();
 
 	if (vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass) != VK_SUCCESS)
@@ -485,7 +499,7 @@ void VulkanTriangle::createFramebuffers()
 	framebuffers.resize(swapchainImageCount);
 	for (size_t i = 0; i < swapchainImageCount; i++)
 	{
-		std::array<VkImageView, 2> attachments = {swapchainImageViews[i], depthImageView};
+		std::array<VkImageView, 3> attachments = {colorImageView, depthImageView, swapchainImageViews[i]};
 
 		VkFramebufferCreateInfo framebufferCreateInfo = {};
 		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -590,7 +604,8 @@ void VulkanTriangle::createTextureImage()
 	vkUnmapMemory(device, stagingBufferMemory);
 	stbi_image_free(pixels);
 
-	createImage(textureWidth, textureHeight, mipLevels, VK_FORMAT_R8G8B8A8_UNORM,
+	createImage(textureWidth, textureHeight, mipLevels, VK_SAMPLE_COUNT_1_BIT,
+	            VK_FORMAT_R8G8B8A8_UNORM,
 	            VK_IMAGE_TILING_OPTIMAL,
 	            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
 	            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
@@ -791,11 +806,18 @@ void VulkanTriangle::createDescriptorSets()
 
 void VulkanTriangle::createDepthResources()
 {
-	createImage(extent.width, extent.height, 1, VK_FORMAT_D16_UNORM,
-	            VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-	            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-	            depthImage, depthImageMemory);
+	createImage(extent.width, extent.height, 1, NUM_OF_SAMPLES,
+	            VK_FORMAT_D16_UNORM, VK_IMAGE_TILING_OPTIMAL,
+	            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+	            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
 	depthImageView = createImageView(depthImage, VK_FORMAT_D16_UNORM, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+}
+
+void VulkanTriangle::createColorResources()
+{
+	createImage(WIDTH, HEIGHT, 1, NUM_OF_SAMPLES, imageFormat, VK_IMAGE_TILING_OPTIMAL,
+	            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage, colorImageMemroy);
+	colorImageView = createImageView(colorImage, imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
 
 void VulkanTriangle::updateUniformBuffer(uint32_t currentImage)
@@ -839,7 +861,8 @@ void VulkanTriangle::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
 	vkBindBufferMemory(device, buffer, bufferMemory, 0);
 }
 
-void VulkanTriangle::createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format,
+void VulkanTriangle::createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples,
+                                 VkFormat format,
                                  VkImageTiling tiling,
                                  VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image,
                                  VkDeviceMemory& imageMemory)
@@ -848,7 +871,7 @@ void VulkanTriangle::createImage(uint32_t width, uint32_t height, uint32_t mipLe
 	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
 	imageCreateInfo.arrayLayers = 1;
-	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageCreateInfo.samples = numSamples;
 	imageCreateInfo.extent.width = width;
 	imageCreateInfo.extent.height = height;
 	imageCreateInfo.mipLevels = mipLevels;
