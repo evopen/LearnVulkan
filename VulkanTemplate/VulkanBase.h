@@ -75,6 +75,11 @@ public:
 	VkQueue graphicsQueue;
 	VkQueue transferQueue;
 	VkQueue presentQueue;
+	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorPool descriptorPool;
+	std::vector<VkDescriptorSet> descriptorSets;
+	std::vector<VkBuffer> uniformBuffers;
+	std::vector<VmaAllocation> uniformBufferAllocation;
 	size_t currentFrame = 0;
 
 public:
@@ -106,11 +111,16 @@ private:
 	void createFramebuffers();
 	void createCommandPool();
 	void createSyncObjects();
+	void createDescriptorSetLayout();
+	void createDescriptorPool();
+
+public:
+	void drawFrame();
+	void createUniformBuffer(VkDeviceSize bufferSize);
 
 	virtual void createGraphicsPipeline() = 0;
 	virtual void createCommandBuffers() = 0;
-	virtual void drawFrame() = 0;
-
+	virtual void updateUniformBuffer(uint32_t currentImage) = 0;
 
 private:
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -122,10 +132,11 @@ private:
 	std::vector<const char*> getRequiredLayers();
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlagBits aspectFlags, uint32_t mipLevels);
 	VkSurfaceFormatKHR chooseSurfaceFormat();
+	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage,
+	                  VkBuffer& buffer, VmaAllocation& allocation);
 	void createImage(uint32_t width, uint32_t height, uint32_t mipLevelCount, VkSampleCountFlagBits sampleCount,
-	                 VkFormat format,
-	                 VkImageTiling tiling,
-	                 VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, VkImage& image, VmaAllocation& allocation);
+	                 VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VmaMemoryUsage memoryUsage,
+	                 VkImage& image, VmaAllocation& allocation);
 	static std::vector<char> readFile(const std::string& filename);
 
 public:

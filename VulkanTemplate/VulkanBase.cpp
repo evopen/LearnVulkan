@@ -41,6 +41,8 @@ void VulkanBase::initVulkan()
 	createFramebuffers();
 	createCommandPool();
 	createSyncObjects();
+	createDescriptorSetLayout();
+	createDescriptorPool();
 }
 
 void VulkanBase::createInstance()
@@ -167,8 +169,8 @@ void VulkanBase::createLogicalDevice()
 	vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device);
 
 	vkGetDeviceQueue(device, queueFamilyIndex.graphicsFamily.value(), 0, &graphicsQueue);
-    vkGetDeviceQueue(device, queueFamilyIndex.presentFamily.value(), 0, &presentQueue);
-    vkGetDeviceQueue(device, queueFamilyIndex.transferFamily.value(), 0, &transferQueue);
+	vkGetDeviceQueue(device, queueFamilyIndex.presentFamily.value(), 0, &presentQueue);
+	vkGetDeviceQueue(device, queueFamilyIndex.transferFamily.value(), 0, &transferQueue);
 }
 
 void VulkanBase::createMemoryAllocator()
@@ -231,8 +233,8 @@ void VulkanBase::createRenderPass()
 	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	colorAttachment.flags = VK_NULL_HANDLE;
 	colorAttachment.samples = sampleCount;
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // DONT_CARE?
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // DONT_CARE?
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
@@ -243,7 +245,7 @@ void VulkanBase::createRenderPass()
 	colorAttachmentResolve.flags = VK_NULL_HANDLE;
 	colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
@@ -253,19 +255,19 @@ void VulkanBase::createRenderPass()
 	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	depthAttachment.flags = VK_NULL_HANDLE;
 	depthAttachment.samples = sampleCount;
-	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
-	std::vector<VkAttachmentDescription> attachments = {colorAttachment, colorAttachmentResolve, depthAttachment};
+	std::vector<VkAttachmentDescription> attachments = {colorAttachmentResolve, colorAttachment, depthAttachment};
 
 	VkAttachmentReference colorAttachmentRef;
-	colorAttachmentRef.attachment = 0;
+	colorAttachmentRef.attachment = 1;
 	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference colorAttachmentResolveRef;
-	colorAttachmentResolveRef.attachment = 1;
+	colorAttachmentResolveRef.attachment = 0;
 	colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference depthAttachmentRef;
@@ -301,7 +303,8 @@ void VulkanBase::createRenderPass()
 void VulkanBase::createColorResources()
 {
 	createImage(windowWidth, windowHeight, 1, sampleCount, surfaceFormat.format,
-	            VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VMA_MEMORY_USAGE_GPU_ONLY,
+	            VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
+	            VMA_MEMORY_USAGE_GPU_ONLY,
 	            colorImage, colorImageAllocation);
 	colorImageView = createImageView(colorImage, surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
@@ -309,7 +312,8 @@ void VulkanBase::createColorResources()
 void VulkanBase::createDepthResources()
 {
 	createImage(windowWidth, windowHeight, 1, sampleCount, depthImageFormat, VK_IMAGE_TILING_OPTIMAL,
-	            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VMA_MEMORY_USAGE_GPU_ONLY,
+	            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
+	            VMA_MEMORY_USAGE_GPU_ONLY,
 	            depthImage, depthImageAllocation);
 	depthImageView = createImageView(depthImage, depthImageFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 }
@@ -321,8 +325,8 @@ void VulkanBase::createFramebuffers()
 	for (size_t i = 0; i < swapchainImageViews.size(); i++)
 	{
 		std::array<VkImageView, 3> attachments = {
-			colorImageView,
 			swapchainImageViews[i],
+			colorImageView,
 			depthImageView,
 		};
 
@@ -376,6 +380,95 @@ void VulkanBase::createSyncObjects()
 			throw std::runtime_error("failed to create synchronization objects for a frame!");
 		}
 	}
+}
+
+void VulkanBase::createDescriptorSetLayout()
+{
+	VkDescriptorSetLayoutBinding uboLayoutBinding;
+	uboLayoutBinding.binding = 0;
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboLayoutBinding.descriptorCount = 1;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	uboLayoutBinding.pImmutableSamplers = nullptr;
+
+	VkDescriptorSetLayoutCreateInfo layoutCreateInfo;
+	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutCreateInfo.pNext = nullptr;
+	layoutCreateInfo.bindingCount = 1;
+	layoutCreateInfo.pBindings = &uboLayoutBinding;
+	layoutCreateInfo.flags = VK_NULL_HANDLE;
+	vkCreateDescriptorSetLayout(device, &layoutCreateInfo, nullptr, &descriptorSetLayout);
+}
+
+void VulkanBase::createDescriptorPool()
+{
+	VkDescriptorPoolSize uboPoolSize;
+	uboPoolSize.descriptorCount = 1;
+	uboPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+	VkDescriptorPoolCreateInfo poolCreateInfo;
+	poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolCreateInfo.pNext = nullptr;
+	poolCreateInfo.flags = VK_NULL_HANDLE;
+	poolCreateInfo.maxSets = static_cast<uint32_t>(swapchainImages.size());
+	poolCreateInfo.poolSizeCount = 1;
+	poolCreateInfo.pPoolSizes = &uboPoolSize;
+
+	vkCreateDescriptorPool(device, &poolCreateInfo, nullptr, &descriptorPool);
+}
+
+void VulkanBase::createUniformBuffer(VkDeviceSize bufferSize)
+{
+	uniformBuffers.resize(swapchainImages.size());
+	uniformBufferAllocation.resize(swapchainImages.size());
+	for (size_t i = 0; i < swapchainImages.size(); i++)
+	{
+		createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
+		             uniformBuffers[i], uniformBufferAllocation[i]);
+	}
+}
+
+void VulkanBase::drawFrame()
+{
+	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+	vkResetFences(device, 1, &inFlightFences[currentFrame]);
+
+	uint32_t imageIndex;
+	vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE,
+	                      &imageIndex);
+	updateUniformBuffer(imageIndex);
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
+	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.pWaitDstStageMask = waitStages;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+
+	VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = signalSemaphores;
+
+	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
+	{
+		throw std::runtime_error("failed to submit draw command buffer!");
+	}
+
+	VkPresentInfoKHR presentInfo = {};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = signalSemaphores;
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &swapchain;
+	presentInfo.pImageIndices = &imageIndex;
+
+	vkQueuePresentKHR(presentQueue, &presentInfo);
+
+	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 VkBool32 VulkanBase::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -490,6 +583,25 @@ VkSurfaceFormatKHR VulkanBase::chooseSurfaceFormat()
 	surfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
 	surfaceFormat.colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 	return surfaceFormat;
+}
+
+void VulkanBase::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkBuffer& buffer,
+                              VmaAllocation& allocation)
+{
+	VkBufferCreateInfo bufferCreateInfo;
+	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferCreateInfo.pNext = nullptr;
+	bufferCreateInfo.flags = VK_NULL_HANDLE;
+	bufferCreateInfo.queueFamilyIndexCount = VK_NULL_HANDLE;
+	bufferCreateInfo.pQueueFamilyIndices = nullptr;
+	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	bufferCreateInfo.size = size;
+	bufferCreateInfo.usage = usage;
+
+	VmaAllocationCreateInfo allocationCreateInfo = {};
+	allocationCreateInfo.usage = memoryUsage;
+
+	vmaCreateBuffer(allocator, &bufferCreateInfo, &allocationCreateInfo, &buffer, &allocation, nullptr);
 }
 
 void VulkanBase::createImage(uint32_t width, uint32_t height, uint32_t mipLevelCount, VkSampleCountFlagBits sampleCount,

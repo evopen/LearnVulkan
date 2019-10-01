@@ -1,6 +1,15 @@
 #include "VulkanBase.h"
 #include <stdexcept>
 #include <array>
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/hash.hpp>
+#include <iostream>
+#include <chrono>
+#include "data.h"
 
 class Triangle : public VulkanBase
 {
@@ -13,8 +22,8 @@ public:
 public:
 	void createCommandBuffers() override;
 	void createGraphicsPipeline() override;
-public:
-	void drawFrame() override;
+	void createDescriptorSets();
+	void updateUniformBuffer(uint32_t currentImage) override;
 };
 
 void Triangle::createCommandBuffers()
@@ -42,6 +51,11 @@ void Triangle::createCommandBuffers()
 			throw std::runtime_error("failed to begin recording command buffer!");
 		}
 
+		std::vector<VkClearValue> clearValues(3);
+		clearValues[0].color = {1, 1, 1};
+		clearValues[1].color = {0, 0, 0};
+		clearValues[2].depthStencil = {1, 0};
+
 		VkRenderPassBeginInfo renderPassInfo = {};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = renderPass;
@@ -49,13 +63,14 @@ void Triangle::createCommandBuffers()
 		renderPassInfo.renderArea.offset = {0, 0};
 		renderPassInfo.renderArea.extent.width = windowWidth;
 		renderPassInfo.renderArea.extent.height = windowHeight;
-		renderPassInfo.clearValueCount = 0;
-		renderPassInfo.pClearValues = nullptr;
+		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassInfo.pClearValues = clearValues.data();
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
+		                        &descriptorSets[i], 0, nullptr);
 		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
 
 		vkCmdEndRenderPass(commandBuffers[i]);
@@ -99,8 +114,8 @@ void Triangle::createGraphicsPipeline()
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = windowWidth;
-	viewport.height = windowHeight;
+	viewport.width = static_cast<float>(windowWidth);
+	viewport.height = static_cast<float>(windowHeight);
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
@@ -140,8 +155,8 @@ void Triangle::createGraphicsPipeline()
 	depthInfo.stencilTestEnable = VK_FALSE;
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT
-		| VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.colorWriteMask =
+		VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	colorBlendAttachment.blendEnable = VK_FALSE;
 
 	VkPipelineColorBlendStateCreateInfo colorBlending = {};
@@ -157,7 +172,8 @@ void Triangle::createGraphicsPipeline()
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 0;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 
 	vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout);
 
@@ -186,59 +202,66 @@ void Triangle::createGraphicsPipeline()
 	vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline);
 }
 
-void Triangle::drawFrame()
+void Triangle::createDescriptorSets()
 {
-	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-	vkResetFences(device, 1, &inFlightFences[currentFrame]);
+	std::vector<VkDescriptorSetLayout> layouts(swapchainImages.size(), descriptorSetLayout);
 
-	uint32_t imageIndex;
-	vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE,
-	                      &imageIndex);
+	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo;
+	descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descriptorSetAllocateInfo.descriptorPool = descriptorPool;
+	descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(swapchainImages.size());
+	descriptorSetAllocateInfo.pNext = nullptr;
+	descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	descriptorSets.resize(swapchainImages.size());
+	vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, descriptorSets.data());
 
-	VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
-	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = waitSemaphores;
-	submitInfo.pWaitDstStageMask = waitStages;
-
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
-
-	VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = signalSemaphores;
-
-	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
+	for (size_t i = 0; i < swapchainImages.size(); i++)
 	{
-		throw std::runtime_error("failed to submit draw command buffer!");
+		VkDescriptorBufferInfo bufferInfo = {};
+		bufferInfo.buffer = uniformBuffers[i];
+		bufferInfo.offset = 0;
+		bufferInfo.range = sizeof(UniformBufferObject);
+		VkWriteDescriptorSet descriptorWrite = {};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite.pBufferInfo = &bufferInfo;
+		descriptorWrite.dstBinding = 0;
+		descriptorWrite.dstSet = descriptorSets[i];
+		vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
 	}
-
-	VkPresentInfoKHR presentInfo = {};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = signalSemaphores;
-
-	VkSwapchainKHR swapchains[] = {swapchain};
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = swapchains;
-
-	presentInfo.pImageIndices = &imageIndex;
-
-	vkQueuePresentKHR(presentQueue, &presentInfo);
-
-	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
+
+void Triangle::updateUniformBuffer(uint32_t currentImage)
+{
+	static auto startTime = std::chrono::high_resolution_clock::now();
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+	UniformBufferObject ubo = {};
+	ubo.model = glm::rotate(glm::mat4(1.f), time * glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
+	ubo.view = glm::lookAt(glm::vec3(2.f, 2.f, 2.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 0.f, 1.f));
+	ubo.proj = glm::perspective(glm::radians(45.f), (float)windowWidth / windowHeight, 0.1f, 10.f);
+
+	ubo.proj[1][1] *= -1;
+
+	void* data;
+	vmaMapMemory(allocator, uniformBufferAllocation[currentImage], &data);
+	memcpy(data, &ubo, sizeof(ubo));
+	vmaUnmapMemory(allocator, uniformBufferAllocation[currentImage]);
+}
+
 
 int main(int argc, char* argv[])
 {
 	Triangle app(true);
 	app.init();
+	app.createUniformBuffer(sizeof(UniformBufferObject));
+	app.createDescriptorSets();
 	app.createGraphicsPipeline();
 	app.createCommandBuffers();
+
 
 	while (!glfwWindowShouldClose(app.window))
 	{
